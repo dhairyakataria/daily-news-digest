@@ -1,0 +1,24 @@
+# Environment
+.env
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+digest.log
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
