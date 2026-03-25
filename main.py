@@ -1,24 +1,14 @@
-import schedule
-import time
 import logging
-import logging.handlers
 from datetime import datetime
 
 from news_agent import process_topic
 from telegram_bot import send_digest
 from config import TOPICS
 
-_file_handler = logging.handlers.RotatingFileHandler(
-    "digest.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
-)
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)s  %(message)s",
-    handlers=[
-        _file_handler,
-        logging.StreamHandler(),
-    ],
+    handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
@@ -50,13 +40,4 @@ def run_digest():
 
 
 if __name__ == "__main__":
-    # Run immediately on start
     run_digest()
-
-    # Then every 12 hours
-    schedule.every(12).hours.do(run_digest)
-    logger.info("Scheduler running. Next digest in 12 hours. Press Ctrl+C to stop.")
-
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
