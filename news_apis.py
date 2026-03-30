@@ -1,9 +1,12 @@
+import logging
 import requests
 import os
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 def _iso_24h_ago_gnews():
@@ -62,7 +65,7 @@ def fetch_gnews(query=None, topic=None, country=None, max_results=5):
              for a in articles]
         )
     except Exception as e:
-        print(f"[GNews] Error: {e}")
+        logger.error(f"[GNews] {e}")
         return []
 
 
@@ -95,7 +98,7 @@ def fetch_thenewsapi(query=None, categories=None, locale=None, max_results=5):
         articles = resp.json().get("data", [])
         return _format_articles(articles)
     except Exception as e:
-        print(f"[TheNewsAPI] Error: {e}")
+        logger.error(f"[TheNewsAPI] {e}")
         return []
 
 
@@ -130,5 +133,5 @@ def fetch_currents(query=None, category=None, max_results=5):
              for a in articles]
         )
     except Exception as e:
-        print(f"[CurrentsAPI] Error: {e}")
+        logger.error(f"[CurrentsAPI] {e}")
         return []

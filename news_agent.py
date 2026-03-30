@@ -7,6 +7,7 @@ Flow per topic:
 """
 
 import logging
+import time
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_community.tools import DuckDuckGoSearchRun
@@ -15,6 +16,20 @@ from llm_call import llm
 from news_apis import fetch_gnews, fetch_thenewsapi, fetch_currents
 
 logger = logging.getLogger(__name__)
+
+
+def _llm_invoke(chain, params, retries=2, delay=5):
+    """Invoke an LLM chain with retries and backoff."""
+    for attempt in range(retries + 1):
+        try:
+            return chain.invoke(params)
+        except Exception as e:
+            if attempt < retries:
+                wait = delay * (attempt + 1)
+                logger.warning(f"LLM call failed (attempt {attempt+1}/{retries+1}), retrying in {wait}s: {e}")
+                time.sleep(wait)
+            else:
+                raise
 
 
 # --- Prompts ---
@@ -76,14 +91,17 @@ def _fetch_articles(topic_config):
     # Primary: GNews by topic category
     if gnews_topic:
         articles += fetch_gnews(topic=gnews_topic, country=gnews_country, max_results=6)
+        time.sleep(1)
 
     # Secondary: TheNewsAPI keyword search
     if search_query and len(articles) < 4:
         articles += fetch_thenewsapi(query=search_query, max_results=6)
+        time.sleep(1)
 
     # Tertiary: GNews keyword search (uses short query)
     if gnews_search_query and len(articles) < 4:
         articles += fetch_gnews(query=gnews_search_query, max_results=6)
+        time.sleep(1)
 
     # Last resort: CurrentsAPI (20 req/day — only called if all else fails)
     if search_query and len(articles) < 4:
@@ -122,8 +140,9 @@ def process_topic(topic_config):
 
     # Phase 1: LLM selects top stories
     selection_chain = SELECTION_PROMPT | llm | StrOutputParser()
-    selected_raw = selection_chain.invoke({"topic": topic_name, "headlines": headlines_text})
+    selected_raw = _llm_invoke(selection_chain, {"topic": topic_name, "headlines": headlines_text})
     selected_headlines = [h.strip() for h in selected_raw.strip().splitlines() if h.strip()]
+    logger.info(f"  LLM selected {len(selected_headlines)} headlines for {topic_name}")
 
     # Phase 2: for each selected story, search + summarize individually
     ddg = DuckDuckGoSearchRun()
@@ -140,7 +159,8 @@ def process_topic(topic_config):
             logger.warning(f"DDG search failed for '{headline[:50]}': {e}")
 
         # LLM summarizes this individual story
-        summary = summary_chain.invoke({"headline": headline, "context": context})
+        time.sleep(2)  # pace LLM calls to stay under rate limits
+        summary = _llm_invoke(summary_chain, {"headline": headline, "context": context})
         stories.append({"headline": headline, "summary": summary.strip()})
 
     return {"topic": topic_name, "stories": stories}

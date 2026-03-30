@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily News Digest</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      line-height: 1.65;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+      border-bottom: 1px solid #1e293b;
+    }
+    header h1 { font-size: 1.75rem; font-weight: 700; color: #f1f5f9; }
+    .meta { color: #64748b; font-size: 0.85rem; margin-top: 0.4rem; }
+
+    main {
+      max-width: 860px;
+      margin: 1.5rem auto;
+      padding: 0 1rem 3rem;
+    }
+
+    /* Topic card */
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+    .card-header {
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 1rem 1.25rem;
+      background: #1a2235;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+    .card-header:hover { background: #1f2a3f; }
+    .card-header .chevron {
+      transition: transform 0.25s;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .card.collapsed .card-header .chevron { transform: rotate(-90deg); }
+    .card.collapsed .card-body { display: none; }
+    .card-body { padding: 0.25rem 1.25rem 1rem; }
+
+    /* Story */
+    .story { padding: 0.75rem 0; border-bottom: 1px solid #293548; }
+    .story:last-child { border-bottom: none; padding-bottom: 0; }
+    .story h3 { font-size: 0.9rem; font-weight: 600; color: #93c5fd; margin-bottom: 0.3rem; }
+    .story p  { font-size: 0.84rem; color: #94a3b8; }
+
+    /* States */
+    .state { text-align: center; padding: 5rem 1rem; color: #64748b; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #334155;
+      border-top-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      color: #475569;
+      font-size: 0.75rem;
+      border-top: 1px solid #1e293b;
+    }
+    footer a { color: #60a5fa; text-decoration: none; }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 1.35rem; }
+      .card-body { padding: 0.25rem 1rem 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Daily News Digest</h1>
+  <p class="meta" id="meta">Loading&hellip;</p>
+</header>
+
+<main id="content">
+  <div class="state">
+    <div class="spinner"></div>
+    <p>Loading latest digest&hellip;</p>
+  </div>
+</main>
+
+<footer>
+  Updated every 12 hours &middot; Powered by AI
+</footer>
+
+<script>
+const EMOJI = {
+  "World News":"&#127758;","Technology":"&#128187;","Sports":"&#9917;",
+  "India":"&#127470;&#127475;","Geopolitics":"&#127760;","Politics":"&#127963;&#65039;",
+  "Indian Stock Market":"&#128200;","Global Markets":"&#128185;",
+  "AI & Machine Learning":"&#129302;"
+};
+
+function esc(t){const d=document.createElement("div");d.textContent=t;return d.innerHTML}
+
+function timeAgo(iso){
+  const diff=Date.now()-new Date(iso).getTime();
+  const m=Math.floor(diff/60000);
+  if(m<1) return "just now";
+  if(m<60) return m+"m ago";
+  const h=Math.floor(m/60);
+  if(h<24) return h+"h ago";
+  return Math.floor(h/24)+"d ago";
+}
+
+async function load(){
+  const el=document.getElementById("content");
+  const meta=document.getElementById("meta");
+  try{
+    const r=await fetch("digest.json?t="+Date.now());
+    if(!r.ok) throw 0;
+    const d=await r.json();
+    if(!d.topics||!d.topics.length) throw 0;
+
+    const total=d.topics.reduce((s,t)=>s+t.stories.length,0);
+    const dt=new Date(d.generated_at);
+    meta.innerHTML=dt.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:true})
+      +" &middot; "+d.topics.length+" topics &middot; "+total+" stories"
+      +" &middot; <span style='color:#60a5fa'>"+timeAgo(d.generated_at)+"</span>";
+
+    el.innerHTML=d.topics.map(t=>{
+      const em=EMOJI[t.topic]||"&#128204;";
+      const stories=t.stories.map(s=>`
+        <div class="story">
+          <h3>${esc(s.headline)}</h3>
+          <p>${esc(s.summary)}</p>
+        </div>`).join("");
+      return `
+        <div class="card">
+          <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>${em} ${esc(t.topic)}</span>
+            <span class="chevron">&#9660;</span>
+          </div>
+          <div class="card-body">${stories}</div>
+        </div>`;
+    }).join("");
+  }catch(e){
+    el.innerHTML='<div class="state"><p>No digest available yet.<br>The first digest will appear after the next scheduled run.</p></div>';
+    meta.textContent="Waiting for first digest\u2026";
+  }
+}
+load();
+</script>
+</body>
+</html>
