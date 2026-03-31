@@ -43,11 +43,11 @@ def fetch_gnews(query=None, topic=None, country=None, max_results=5):
     if not api_key:
         return []
 
-    params = {"lang": "en", "max": max_results, "token": api_key}
+    params = {"lang": "en", "max": max_results, "apikey": api_key}
 
     if topic:
         url = "https://gnews.io/api/v4/top-headlines"
-        params["topic"] = topic
+        params["category"] = topic
         if country:
             params["country"] = country
     else:
