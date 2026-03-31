@@ -88,14 +88,14 @@ def _fetch_articles(topic_config):
     # Short query optimised for GNews search (which breaks on long queries)
     gnews_search_query = topic_config.get("gnews_search_query") or search_query
 
-    # Primary: GNews by topic category
-    if gnews_topic:
-        articles += fetch_gnews(topic=gnews_topic, country=gnews_country, max_results=6)
+    # Primary: TheNewsAPI keyword search (most reliable)
+    if search_query:
+        articles += fetch_thenewsapi(query=search_query, max_results=6)
         time.sleep(1)
 
-    # Secondary: TheNewsAPI keyword search
-    if search_query and len(articles) < 4:
-        articles += fetch_thenewsapi(query=search_query, max_results=6)
+    # Secondary: GNews by topic category
+    if gnews_topic and len(articles) < 4:
+        articles += fetch_gnews(topic=gnews_topic, country=gnews_country, max_results=6)
         time.sleep(1)
 
     # Tertiary: GNews keyword search (uses short query)
@@ -106,6 +106,8 @@ def _fetch_articles(topic_config):
     # Last resort: CurrentsAPI (20 req/day — only called if all else fails)
     if search_query and len(articles) < 4:
         articles += fetch_currents(query=search_query, max_results=6)
+
+    logger.info(f"  Fetched {len(articles)} raw articles")
 
     # Deduplicate by title
     seen, unique = set(), []

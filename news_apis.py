@@ -93,7 +93,7 @@ def fetch_thenewsapi(query=None, categories=None, locale=None, max_results=5):
             params["locale"] = locale
 
     try:
-        resp = requests.get(url, params=params, timeout=15)
+        resp = requests.get(url, params=params, timeout=30)
         resp.raise_for_status()
         articles = resp.json().get("data", [])
         return _format_articles(articles)

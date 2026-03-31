@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   run-digest:
@@ -42,3 +44,19 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add public/digest.json
           git diff --cached --quiet || (git commit -m "Update digest.json [skip ci]" && git push)
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy-pages:
+    needs: run-digest
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
